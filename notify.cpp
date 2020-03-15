@@ -10,21 +10,14 @@
 #include "notify.h"
 #include "results.h"
 
-static pthread_t thread;
-
 static int fd = 0;
-static struct fanotify_event_metadata* metadata;
-static struct fanotify_event_metadata buff[200];
-static ssize_t path_len;
-static char* path;
-static char* procfd_path;
+static const int BUFFLEN = 200;
 static bool keepGoing;
+static pthread_t thread;
 
 int my_fanotify_init(char* dir)
 {
 	keepGoing = true;
-	path = new char[PATH_MAX];
-	procfd_path = new char[PATH_MAX];
 	fd = fanotify_init(FAN_CLASS_NOTIF | FAN_CLOEXEC, O_RDONLY | O_LARGEFILE);
 
 	if (fd == -1)
@@ -47,16 +40,20 @@ void my_fanotify_start()
 	pthread_create(&thread, NULL, my_fanotify_get_event, NULL);
 }
 
+// Functionality here mostly nicked from the fanotify man page example
 void* my_fanotify_get_event(void* args)
 {
-	// Functionality here mostly nicked from the fanotify man page example
-
 	ssize_t len;
+	ssize_t path_len;
+	struct fanotify_event_metadata* metadata;
+	struct fanotify_event_metadata* buff = new struct fanotify_event_metadata[BUFFLEN];
+	char* path = new char[PATH_MAX];
+	char* procfd_path = new char[PATH_MAX];
 
 	/* Read some events */
 	while (keepGoing)
 	{
-		len = read(fd, (void *) &buff, sizeof(buff));
+		len = read(fd, (void *) buff, sizeof(fanotify_event_metadata) * BUFFLEN);
 		if (len == -1 && errno != EAGAIN)
 		{
 			perror("read");
@@ -103,6 +100,11 @@ void* my_fanotify_get_event(void* args)
 			metadata = FAN_EVENT_NEXT(metadata, len);
 		}
 	}
+
+	delete [] path;
+	delete [] procfd_path;
+	delete [] buff;
+
 	return NULL;
 }
 
@@ -115,6 +117,4 @@ void my_notify_destroy()
 {
 	pthread_join(thread, NULL);
 	close(fd);
-	delete [] path;
-	delete [] procfd_path;
 }
