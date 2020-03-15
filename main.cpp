@@ -6,20 +6,31 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
-	if (argc != 2)
+	int delay = 0;
+	int duration = 0;
+	if (argc != 4)
 	{
-		fprintf(stderr, "Usage: %s MOUNT\n", argv[0]);
+		fprintf(stderr, "Usage: %s results_delay duration MOUNT\n", argv[0]);
 		exit(EXIT_FAILURE);
 	}
 
 	try
 	{
-		results_init(); // Start of our results printer, is a thread
-		my_fanotify_init(argv[1]); // Initialise the fanotify watcher
+		delay = atoi(argv[1]);
+		duration = atoi(argv[2]);
+
+		if (!delay || !duration)
+		{
+			fprintf(stderr, "Usage: %s results_delay duration MOUNT\n", argv[0]);
+			exit(EXIT_FAILURE);
+		}
+
+		results_init(delay); // Start of our results printer, is a thread
+		my_fanotify_init(argv[3]); // Initialise the fanotify watcher
 
 		my_fanotify_start(); // Start the fanotify watcher, is a thread
 
-		sleep(5); // Let the threads do their thing for a while
+		sleep(duration); // Let the threads do their thing for a while
 
 		my_fanotify_stop(); // Tell the watcher to stop
 		my_notify_destroy(); // Clean up the watcher

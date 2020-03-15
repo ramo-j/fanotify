@@ -4,13 +4,8 @@
 #include <string>
 using namespace std;
 
-struct resultsThreadArgs {
-	int fd;
-	int sleepDuration;
-};
-
 // Create, destroy our map
-void results_init();
+void results_init(const int delay);
 void results_destroy();
 
 // Add result

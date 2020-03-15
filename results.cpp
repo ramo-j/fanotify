@@ -6,13 +6,15 @@
 #include "results.h"
 
 static bool keepGoing;
+static int sleepDuration;
+static int fd;
 static pthread_mutex_t* lock;
 static map<string, int>* results;
 static pthread_t thread;
-static struct resultsThreadArgs ta;
 
-void results_init()
+void results_init(const int delay)
 {
+	sleepDuration = delay;
 	keepGoing = true;
 	results = new map<string, int>();
 	lock = new pthread_mutex_t;
@@ -20,10 +22,9 @@ void results_init()
 		throw new std::bad_alloc;
 	pthread_mutex_unlock(lock);
 
-	ta.fd = STDOUT_FILENO;
-	ta.sleepDuration = 3;
-
-	pthread_create(&thread, NULL, results_print_thread, (void *) &ta);
+	fd = STDOUT_FILENO;
+	
+	pthread_create(&thread, NULL, results_print_thread, NULL);
 }
 
 void results_destroy()
@@ -52,13 +53,13 @@ void* results_print_thread(void* args)
 {
 	while (keepGoing)
 	{
-		sleep(((resultsThreadArgs*)args)->sleepDuration);
+		sleep(sleepDuration);
 
 		pthread_mutex_lock(lock);
 
 		if (!results->size())
 		{
-			dprintf(((resultsThreadArgs*)args)->fd, "{\"files\":[]}\n");
+			dprintf(fd, "{\"files\":[]}\n");
 			pthread_mutex_unlock(lock);
 			continue;
 		}
@@ -66,16 +67,16 @@ void* results_print_thread(void* args)
 		std::map<string,int>::iterator lookAhead = results->begin();
 		lookAhead++;
 
-		dprintf(((resultsThreadArgs*)args)->fd, "{\"files\":[");
+		dprintf(fd, "{\"files\":[");
 		for (std::map<string,int>::iterator it = results->begin(); it != results->end(); ++it)
 		{
-			dprintf(((resultsThreadArgs*)args)->fd, "{\"file\":\"%s\", \"count\": %d}", it->first.c_str(), it->second);
+			dprintf(fd, "{\"file\":\"%s\", \"count\": %d}", it->first.c_str(), it->second);
 			if (lookAhead++ != results->end())
 			{
-				dprintf(((resultsThreadArgs*)args)->fd, ", ");
+				dprintf(fd, ", ");
 			}
 		}
-		dprintf(((resultsThreadArgs*)args)->fd, "]}\n");
+		dprintf(fd, "]}\n");
 
 		results->clear();	
 		pthread_mutex_unlock(lock);
