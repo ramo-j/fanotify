@@ -49,6 +49,8 @@ void my_fanotify_start()
 
 void* my_fanotify_get_event(void* args)
 {
+	// Functionality here mostly nicked from the fanotify man page example
+
 	ssize_t len;
 
 	/* Read some events */
